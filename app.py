@@ -1,11 +1,10 @@
-pip install folium streamlit-folium
-# 1. IMPORTS
 import streamlit as st
 import pickle
 import pandas as pd
 import numpy as np
 import os
-
+import folium
+from streamlit_folium import st_folium
 # 2. PAGE CONFIGURATION
 st.set_page_config(
     page_title="Arctic SafeRoute AI",
