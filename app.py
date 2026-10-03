@@ -15,18 +15,21 @@ st.set_page_config(
 MODEL_PATH = "random_forest_final.pkl"
 PREDICTION_PATH = "final_deployment_predictions.csv"
 
+# ============================================================
 # 4. MODEL LOADING
+# ============================================================
+
 @st.cache_resource
 def load_model():
-    with open(MODEL_PATH, "rb") as file:
-        return pickle.load(file)
+    import joblib
+    return joblib.load(MODEL_PATH)
+
 try:
     model = load_model()
     st.success("Random Forest model loaded successfully.")
 except Exception as e:
     st.error(f"Model loading error: {e}")
-    st.stop()
-  
+    st.stop()  
 # 5. DEPLOYMENT DATA LOADING
 try:
     deployment_data = pd.read_csv(PREDICTION_PATH)
