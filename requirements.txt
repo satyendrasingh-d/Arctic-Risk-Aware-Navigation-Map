@@ -2,7 +2,7 @@ streamlit
 pandas
 numpy
 plotly
-scikit-learn==1.6.1
+scikit-learn
 joblib
 folium
 streamlit-folium
