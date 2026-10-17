@@ -82,6 +82,7 @@ with st.sidebar:
     st.markdown("---")
     st.write("👤 **Arctic Sentinel AI**\nv1.0.0")
 
+
 if page == "🛣️ Route Analysis" or page == "🗺️ Map View":
     st.header("📍 Route Input & Analysis")
     
@@ -92,12 +93,12 @@ if page == "🛣️ Route Analysis" or page == "🗺️ Map View":
     with col2:
         end_loc = st.text_input("End Destination", placeholder="e.g., Svalbard")
     with col3:
-        st.write("") # Spacing
+        st.write("") 
         st.write("")
         analyze_btn = st.button("🔍 Analyze Route")
 
-# Step 3: Interactive map, charts aur data table
-if analyze_btn and start_loc and end_loc:
+    # Dhyan rakho: Ye 'if' line theek upar wale 'st.header' ke level par align honi chahiye
+    if analyze_btn and start_loc and end_loc:
         with st.spinner("Analyzing AI Risk points..."):
             start_coords = get_coordinates(start_loc)
             end_coords = get_coordinates(end_loc)
@@ -121,7 +122,6 @@ if analyze_btn and start_loc and end_loc:
                     risk_levels = []
                     colors = []
                     
-                    # Draw dotted route based on risk
                     for i, coord in enumerate(route_coords):
                         prob = probs[i]
                         if prob >= 0.65:
@@ -138,7 +138,7 @@ if analyze_btn and start_loc and end_loc:
                             location=coord, radius=4, color=color, fill=True, fill_color=color, fill_opacity=1
                         ).add_to(m)
                     
-                    # Display Layout: Map on left, Analytics on right
+                    # Display Layout
                     map_col, stats_col = st.columns([2, 1])
                     
                     with map_col:
@@ -165,7 +165,7 @@ if analyze_btn and start_loc and end_loc:
                         fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, margin=dict(t=0, b=0, l=0, r=0))
                         st.plotly_chart(fig, use_container_width=True)
                     
-                    # Data Table at bottom
+                    # Data Table
                     st.markdown("### 📋 Route Points Analysis")
                     df_table = pd.DataFrame({
                         'Latitude': [c[0] for c in route_coords],
@@ -177,5 +177,3 @@ if analyze_btn and start_loc and end_loc:
                     
             else:
                 st.error("Locations not found. Please check city names.")
-
-
