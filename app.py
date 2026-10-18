@@ -6,6 +6,7 @@ import requests
 import numpy as np
 import joblib
 import plotly.express as px
+import time
 
 # Page configuration
 st.set_page_config(page_title="Arctic Sentinel AI", layout="wide", initial_sidebar_state="expanded")
