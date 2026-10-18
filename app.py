@@ -92,9 +92,12 @@ def get_live_weather_features(route_coords, api_key):
         return None, None
     return pd.DataFrame(features_list), sampled_coords
 
-if 'analyzed' not in st.session_state:
-    st.session_state.update({'analyzed': False, 'route_coords': None, 'start_coords': None, 'end_coords': None, 'live_route_points': None, 'live_probs': None})
-
+if 'analyzed' not in st.session_state: st.session_state['analyzed'] = False
+if 'route_coords' not in st.session_state: st.session_state['route_coords'] = None
+if 'start_coords' not in st.session_state: st.session_state['start_coords'] = None
+if 'end_coords' not in st.session_state: st.session_state['end_coords'] = None
+if 'live_route_points' not in st.session_state: st.session_state['live_route_points'] = None
+if 'live_probs' not in st.session_state: st.session_state['live_probs'] = None
 with st.sidebar:
     st.title("Arctic Sentinel AI")
     page = st.radio("Navigation", ["🏠 Home", "🛣️ Route Analysis", "🗺️ Map View", "⚙️ Model Details", "ℹ️ About"])
@@ -145,7 +148,7 @@ elif page == "🛣️ Route Analysis":
                     else:
                         st.error("Locations not found.")
             
-    if st.session_state['analyzed'] and st.session_state['live_probs'] is not None:
+    if st.session_state.get('analyzed') and st.session_state.get('live_probs') is not None:
         avg_risk = np.mean(st.session_state['live_probs']) * 100
         st.markdown("### 🛡️ Real-Time Risk Assessment")
         if avg_risk >= 65: st.error(f"🚨 HIGH RISK ({avg_risk:.1f}%) - Extreme Weather Detected!")
