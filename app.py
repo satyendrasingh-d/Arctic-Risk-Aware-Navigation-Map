@@ -49,91 +49,123 @@ def get_route(start_coords, end_coords):
         return [[coord[1], coord[0]] for coord in route_coords] 
     return None
 
-def mock_route_features(num_points):
-    return pd.DataFrame({
-        'temp': np.random.uniform(-30, 5, num_points),
-        'snowfall': np.random.uniform(0, 15, num_points),
-        'precip': np.random.uniform(0, 10, num_points),
-        'wind': np.random.uniform(5, 60, num_points),
-        'Wind_Chill': np.random.uniform(-40, 0, num_points),
-        'Is_Freezing': np.random.choice([0, 1], num_points),
-        'Severe_Weather': np.random.choice([0, 1], num_points, p=[0.8, 0.2]),
-        'Risk_Zone': np.random.choice([0, 1, 2], num_points),
-        'Zone_Weather_Risk': np.random.uniform(0, 10, num_points),
-        'Is_Night': np.random.choice([0, 1], num_points),
-        'Is_RushHour': np.random.choice([0, 1], num_points),
-        'Visibility_m': np.random.uniform(100, 10000, num_points),
-        'Snow_Depth_m': np.random.uniform(0, 3, num_points),
-        'Surface_Pressure_hPa': np.random.uniform(950, 1030, num_points),
-        'Black_Ice_Risk': np.random.choice([0, 1], num_points)
-    })
+def get_live_weather_features(route_coords, api_key):
+    if len(route_coords) > 10:
+        indices = np.linspace(0, len(route_coords)-1, 10, dtype=int)
+        sampled_coords = [route_coords[i] for i in indices]
+    else:
+        sampled_coords = route_coords
+        
+    features_list = []
+    
+    for lon, lat in sampled_coords:
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        try:
+            resp = requests.get(url, timeout=5).json()
+            if resp.get("cod") == 200:
+                temp = resp['main']['temp']
+                wind_kph = resp['wind']['speed'] * 3.6
+                precip = resp.get('rain', {}).get('1h', 0)
+                snow = resp.get('snow', {}).get('1h', 0)
+                visibility = resp.get('visibility', 10000)
+                pressure = resp['main']['pressure']
+                
+                is_freezing = 1 if temp <= 0 else 0
+                black_ice = 1 if temp <= 2 and (precip > 0 or snow > 0) else 0
+                severe = 1 if wind_kph > 50 or snow > 2 else 0
+                
+                features_list.append({
+                    'temp': temp, 'snowfall': snow, 'precip': precip, 'wind': wind_kph,
+                    'Wind_Chill': temp - 2 if wind_kph > 10 else temp,
+                    'Is_Freezing': is_freezing, 'Severe_Weather': severe,
+                    'Risk_Zone': 2 if severe else (1 if is_freezing else 0),
+                    'Zone_Weather_Risk': wind_kph / 10, 'Is_Night': 0, 'Is_RushHour': 0,
+                    'Visibility_m': visibility, 'Snow_Depth_m': snow / 10,
+                    'Surface_Pressure_hPa': pressure, 'Black_Ice_Risk': black_ice
+                })
+            else:
+                continue
+        except Exception as e:
+            continue
+            
+    if not features_list:
+        return None, None
+    return pd.DataFrame(features_list), sampled_coords
 
-# Session state initialize karo taaki data gayab na ho
 if 'analyzed' not in st.session_state:
-    st.session_state['analyzed'] = False
-    st.session_state['route_coords'] = None
-    st.session_state['start_coords'] = None
-    st.session_state['end_coords'] = None
+    st.session_state.update({'analyzed': False, 'route_coords': None, 'start_coords': None, 'end_coords': None, 'live_route_points': None, 'live_probs': None})
 
-# Sidebar Navigation
 with st.sidebar:
     st.title("Arctic Sentinel AI")
     page = st.radio("Navigation", ["🏠 Home", "🛣️ Route Analysis", "🗺️ Map View", "⚙️ Model Details", "ℹ️ About"])
 
-# Step 1: Blank Pages Fix
 if page == "🏠 Home":
     st.title("Welcome to Arctic Sentinel AI")
-    st.write("AI-Powered Safer Route Intelligence dashboard.")
+    st.write("AI-Powered Safer Route Intelligence dashboard with Live OpenWeather API.")
 
 elif page == "⚙️ Model Details":
     st.title("Model Details")
-    st.write("Model: Stacking Classifier V3 | Accuracy: 66%")
+    st.write("Model: Stacking Classifier V3 | API: OpenWeatherMap Live Data")
 
 elif page == "ℹ️ About":
     st.title("About")
-    st.write("Developed by Satyendra. Admin panel aur database integration future update me aayega.")
+    st.write("Developed by Satyendra. Admin panel will be added in future updates.")
 
-# Step 4: Route Analysis (Data & Charts)
 elif page == "🛣️ Route Analysis":
     st.header("📍 Route Input & Analytics")
     col1, col2, col3 = st.columns([2, 2, 1])
-    with col1: start_loc = st.text_input("Start Location", placeholder="e.g., Tromso, Norway")
-    with col2: end_loc = st.text_input("End Destination", placeholder="e.g., Nordkapp, Norway")
+    with col1: start_loc = st.text_input("Start Location", placeholder="e.g., Yakutsk, Russia")
+    with col2: end_loc = st.text_input("End Destination", placeholder="e.g., Magadan, Russia")
     with col3: 
-        st.write("") 
-        st.write("")
-        if st.button("🔍 Analyze"):
-            with st.spinner("Analyzing route..."):
-                sc = get_coordinates(start_loc)
-                ec = get_coordinates(end_loc)
-                if sc[0] and ec[0]:
-                    st.session_state['start_coords'] = sc
-                    st.session_state['end_coords'] = ec
-                    st.session_state['route_coords'] = get_route(sc, ec)
-                    st.session_state['analyzed'] = True
-                else:
-                    st.error("Locations not found.")
+        st.write(""); st.write("")
+        if st.button("🔍 Analyze Route"):
+            # YAHAN APNI ASLI API KEY DAALO
+            API_KEY = "YOUR_OPENWEATHER_API_KEY" 
             
-    if st.session_state['analyzed'] and st.session_state['route_coords']:
-        features = mock_route_features(len(st.session_state['route_coords']))
-        probs = model.predict_proba(features)[:, 1] if model else np.random.uniform(0, 1, len(st.session_state['route_coords']))
-        
-        st.markdown("### 🛡️ Risk Assessment")
-        avg_risk = np.mean(probs) * 100
-        if avg_risk >= 65: st.error(f"🚨 HIGH RISK ({avg_risk:.1f}%)")
-        elif avg_risk >= 35: st.warning(f"⚠️ MEDIUM RISK ({avg_risk:.1f}%)")
-        else: st.success(f"✅ LOW RISK ({avg_risk:.1f}%)")
+            if API_KEY == "YOUR_OPENWEATHER_API_KEY":
+                st.error("Please enter your OpenWeather API Key in the code first!")
+            else:
+                with st.spinner("Fetching route and live weather data..."):
+                    sc = get_coordinates(start_loc)
+                    ec = get_coordinates(end_loc)
+                    if sc[0] and ec[0]:
+                        full_route = get_route(sc, ec)
+                        if full_route:
+                            features, sampled_route = get_live_weather_features(full_route, API_KEY)
+                            if features is not None:
+                                probs = model.predict_proba(features)[:, 1] if model else np.random.uniform(0, 1, len(sampled_route))
+                                st.session_state.update({
+                                    'start_coords': sc, 'end_coords': ec, 'route_coords': full_route,
+                                    'live_route_points': sampled_route, 'live_probs': probs, 'analyzed': True
+                                })
+                            else:
+                                st.error("Failed to fetch weather data.")
+                        else:
+                            st.error("Could not find a driving route between these locations.")
+                    else:
+                        st.error("Locations not found.")
+            
+    if st.session_state['analyzed'] and st.session_state['live_probs'] is not None:
+        avg_risk = np.mean(st.session_state['live_probs']) * 100
+        st.markdown("### 🛡️ Real-Time Risk Assessment")
+        if avg_risk >= 65: st.error(f"🚨 HIGH RISK ({avg_risk:.1f}%) - Extreme Weather Detected!")
+        elif avg_risk >= 35: st.warning(f"⚠️ MEDIUM RISK ({avg_risk:.1f}%) - Drive with Caution.")
+        else: st.success(f"✅ LOW RISK ({avg_risk:.1f}%) - Route is Clear.")
 
-# Step 4: Map View (Google Maps style Map only)
 elif page == "🗺️ Map View":
     st.header("🗺️ Live Route Map")
     if st.session_state['analyzed'] and st.session_state['start_coords']:
-        # OpenStreetMap tiles se API error hat jayega
         m = folium.Map(location=st.session_state['start_coords'], zoom_start=5, tiles="OpenStreetMap") 
         
-        for coord in st.session_state['route_coords']:
-            folium.CircleMarker(location=coord, radius=3, color="blue", fill=True).add_to(m)
+        # Draw full route path
+        folium.PolyLine(locations=st.session_state['route_coords'], color='blue', weight=3).add_to(m)
         
+        # Draw risk points based on live weather
+        for idx, coord in enumerate(st.session_state['live_route_points']):
+            prob = st.session_state['live_probs'][idx]
+            color = "red" if prob >= 0.65 else ("orange" if prob >= 0.35 else "green")
+            folium.CircleMarker(location=coord, radius=6, color=color, fill=True, fill_opacity=0.9).add_to(m)
+            
         folium.Marker(st.session_state['start_coords'], popup="Start", icon=folium.Icon(color="green")).add_to(m)
         folium.Marker(st.session_state['end_coords'], popup="End", icon=folium.Icon(color="red")).add_to(m)
         
