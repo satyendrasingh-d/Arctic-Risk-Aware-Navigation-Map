@@ -61,14 +61,21 @@ def get_live_weather_features(route_coords, api_key):
     for lon, lat in sampled_coords:
         url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
-            resp = requests.get(url, timeout=5).json()
-            if resp.get("cod") == 200:
-                temp = resp['main']['temp']
-                wind_kph = resp['wind']['speed'] * 3.6
+            # Timeout badha diya aur json fetch kar rahe hain
+            resp = requests.get(url, timeout=10).json() 
+            
+            # String aur Number dono type ke 200 ko handle karega
+            if str(resp.get("cod")) == "200":
+                # Safe data fetching - agar koi data missing hua toh default value (jaise 0) le lega app crash nahi hogi
+                main_data = resp.get('main', {})
+                wind_data = resp.get('wind', {})
+                
+                temp = main_data.get('temp', 0)
+                wind_kph = wind_data.get('speed', 0) * 3.6
                 precip = resp.get('rain', {}).get('1h', 0)
                 snow = resp.get('snow', {}).get('1h', 0)
                 visibility = resp.get('visibility', 10000)
-                pressure = resp['main']['pressure']
+                pressure = main_data.get('pressure', 1013)
                 
                 is_freezing = 1 if temp <= 0 else 0
                 black_ice = 1 if temp <= 2 and (precip > 0 or snow > 0) else 0
@@ -83,14 +90,19 @@ def get_live_weather_features(route_coords, api_key):
                     'Visibility_m': visibility, 'Snow_Depth_m': snow / 10,
                     'Surface_Pressure_hPa': pressure, 'Black_Ice_Risk': black_ice
                 })
-            else:
-                continue
+            
+            # API ko block hone se bachane ke liye 0.3 second ka delay
+            time.sleep(0.3) 
+            
         except Exception as e:
+            time.sleep(0.3)
             continue
             
+    # Check karega ki kam se kam 1 bhi point ka data aaya ya nahi
     if not features_list:
         return None, None
     return pd.DataFrame(features_list), sampled_coords
+
 
 if 'analyzed' not in st.session_state: st.session_state['analyzed'] = False
 if 'route_coords' not in st.session_state: st.session_state['route_coords'] = None
