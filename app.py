@@ -125,7 +125,7 @@ elif page == "🛣️ Route Analysis":
             # YAHAN APNI ASLI API KEY DAALO
             API_KEY = "17d1849df01bb168a74f963e12235c00" 
             
-            if API_KEY == "17d1849df01bb168a74f963e12235c00":
+            if API_KEY == "APi_KEY":
                 st.error("Please enter your OpenWeather API Key in the code first!")
             else:
                 with st.spinner("Fetching route and live weather data..."):
