@@ -25,7 +25,7 @@ st.markdown("""
 @st.cache_resource
 def load_model():
     try:
-        return joblib.load('arctic_master_v3.pkl')
+        return joblib.load('arctic_master_final_model_v3.pkl')
     except Exception as e:
         return None
 
